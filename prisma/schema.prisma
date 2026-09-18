@@ -1,0 +1,163 @@
+// Prisma schema — control de gastos personales
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  timezone     String   @default("America/Argentina/Buenos_Aires")
+  currency     String   @default("ARS")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions        Session[]
+  categories      Category[]
+  paymentMethods  PaymentMethod[]
+  expenses        Expense[]
+  budgets         Budget[]
+  installmentPlans InstallmentPlan[]
+}
+
+/// Sesión de usuario. Se guarda solo el hash del token; el token real vive en la cookie.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  /// Clave interna estable (ej. "uber") para identificar categorías especiales aunque se renombren.
+  key       String?
+  icon      String   @default("🏷️")
+  color     String   @default("#6366f1")
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses         Expense[]
+  budgets          Budget[]
+  installmentPlans InstallmentPlan[]
+
+  @@unique([userId, name])
+  @@unique([userId, key])
+  @@index([userId, active])
+}
+
+model PaymentMethod {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  /// Clave interna estable (ej. "credit") para lógica especial (cuotas).
+  key       String?
+  icon      String   @default("💳")
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses         Expense[]
+  installmentPlans InstallmentPlan[]
+
+  @@unique([userId, name])
+  @@unique([userId, key])
+  @@index([userId, active])
+}
+
+/// Compra financiada en cuotas. Cada cuota se representa como un Expense mensual
+/// vinculado al plan, de modo que las estadísticas nunca duplican el total.
+model InstallmentPlan {
+  id              String   @id @default(cuid())
+  userId          String
+  categoryId      String
+  paymentMethodId String
+  description     String
+  totalAmount     Decimal  @db.Decimal(14, 2)
+  installments    Int
+  /// Fecha de la primera cuota (cuota 1).
+  startDate       DateTime @db.Date
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  expenses      Expense[]
+
+  @@index([userId])
+}
+
+model Expense {
+  id                String   @id @default(cuid())
+  userId            String
+  categoryId        String
+  paymentMethodId   String
+  /// Monto de este gasto (si es una cuota, el monto de la cuota).
+  amount            Decimal  @db.Decimal(14, 2)
+  description       String?
+  date              DateTime @db.Date
+  /// Hora opcional en formato HH:mm.
+  time              String?
+  notes             String?
+  /// Datos específicos de viajes (Uber).
+  origin            String?
+  destination       String?
+  /// Cuotas: total de cuotas y número de esta cuota (1-based). 1/1 para gastos simples.
+  installments      Int      @default(1)
+  installmentNumber Int      @default(1)
+  installmentPlanId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category        Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  paymentMethod   PaymentMethod    @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+  installmentPlan InstallmentPlan? @relation(fields: [installmentPlanId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([userId, categoryId, date])
+  @@index([userId, paymentMethodId])
+  @@index([installmentPlanId])
+}
+
+/// Presupuesto mensual. categoryId = null → presupuesto general del mes.
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String?
+  amount     Decimal  @db.Decimal(14, 2)
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, year, month])
+  @@index([userId, year, month])
+}
