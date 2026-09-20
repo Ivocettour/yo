@@ -31,6 +31,7 @@ export default async function NewExpensePage({ searchParams }: PageProps<"/gasto
             today={defaultDate}
             nowTime={nowTimeInTimezone(user.timezone)}
             defaultCategoryId={defaultCategoryId}
+            fixedDate={defaultDate !== today}
           />
         </CardBody>
       </Card>

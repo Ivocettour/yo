@@ -15,6 +15,7 @@ import { Field, FormError } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { CategoryPicker, PaymentMethodPicker } from "./pickers";
+import { useDeviceDateTimeDefaults } from "./use-device-defaults";
 
 interface ExpenseFormProps {
   categories: CategoryDTO[];
@@ -25,9 +26,11 @@ interface ExpenseFormProps {
   /** Categoria preseleccionada al crear (por ejemplo desde un filtro). */
   defaultCategoryId?: string;
   returnTo?: string;
+  /** Si la fecha viene fijada (por ejemplo desde el calendario) no se reemplaza por la del dispositivo. */
+  fixedDate?: boolean;
 }
 
-export function ExpenseForm({ categories, paymentMethods, today, nowTime, expense, defaultCategoryId, returnTo }: ExpenseFormProps) {
+export function ExpenseForm({ categories, paymentMethods, today, nowTime, expense, defaultCategoryId, returnTo, fixedDate }: ExpenseFormProps) {
   const router = useRouter();
   const { success } = useToast();
   const isEdit = Boolean(expense);
@@ -48,6 +51,9 @@ export function ExpenseForm({ categories, paymentMethods, today, nowTime, expens
   const [amountIsTotal, setAmountIsTotal] = useState(true);
   const [showMore, setShowMore] = useState(Boolean(expense?.notes || expense?.time || expense?.origin));
   const handled = useRef(false);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const timeRef = useRef<HTMLInputElement>(null);
+  useDeviceDateTimeDefaults(dateRef, timeRef, !isEdit && !fixedDate);
 
   const selectedMethod = paymentMethods.find((m) => m.id === paymentMethodId);
   const selectedCategory = categories.find((c) => c.id === categoryId);
@@ -107,10 +113,10 @@ export function ExpenseForm({ categories, paymentMethods, today, nowTime, expens
 
       <div className="grid grid-cols-[1.35fr_1fr] gap-3">
         <Field label="Fecha" htmlFor="date" error={errors.date} required>
-          <Input id="date" name="date" type="date" defaultValue={expense?.date ?? today} required max="2100-12-31" />
+          <Input ref={dateRef} id="date" name="date" type="date" defaultValue={expense?.date ?? today} required max="2100-12-31" />
         </Field>
         <Field label="Hora" htmlFor="time" error={errors.time}>
-          <Input id="time" name="time" type="time" defaultValue={expense?.time ?? (isEdit ? "" : nowTime)} />
+          <Input ref={timeRef} id="time" name="time" type="time" defaultValue={expense?.time ?? (isEdit ? "" : nowTime)} />
         </Field>
       </div>
 

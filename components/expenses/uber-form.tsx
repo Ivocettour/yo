@@ -12,6 +12,7 @@ import { Field, FormError } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
 import { PaymentMethodPicker } from "./pickers";
+import { useDeviceDateTimeDefaults } from "./use-device-defaults";
 
 interface UberFormProps {
   paymentMethods: PaymentMethodDTO[];
@@ -31,6 +32,9 @@ export function UberForm({ paymentMethods, today, nowTime, lastPaymentMethodId, 
   const [paymentMethodId, setPaymentMethodId] = useState(lastPaymentMethodId ?? paymentMethods[0]?.id ?? "");
   const [showMore, setShowMore] = useState(false);
   const handled = useRef(false);
+  const dateRef = useRef<HTMLInputElement>(null);
+  const timeRef = useRef<HTMLInputElement>(null);
+  useDeviceDateTimeDefaults(dateRef, timeRef, true);
 
   useEffect(() => {
     if (state?.ok && !handled.current) {
@@ -68,10 +72,10 @@ export function UberForm({ paymentMethods, today, nowTime, lastPaymentMethodId, 
 
       <div className="grid grid-cols-[1.35fr_1fr] gap-3">
         <Field label="Fecha" htmlFor="date" error={errors.date} required>
-          <Input id="date" name="date" type="date" defaultValue={today} required max="2100-12-31" />
+          <Input ref={dateRef} id="date" name="date" type="date" defaultValue={today} required max="2100-12-31" />
         </Field>
         <Field label="Hora" htmlFor="time" error={errors.time}>
-          <Input id="time" name="time" type="time" defaultValue={nowTime} />
+          <Input ref={timeRef} id="time" name="time" type="time" defaultValue={nowTime} />
         </Field>
       </div>
 

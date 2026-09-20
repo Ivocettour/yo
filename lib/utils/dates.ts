@@ -23,29 +23,44 @@ export function daysInMonth(year: number, month: number): number {
 /** Devuelve la fecha de hoy en la zona horaria dada, como "YYYY-MM-DD". */
 export function todayInTimezone(timeZone: string = DEFAULT_TIMEZONE, now: Date = new Date()): ISODate {
   try {
-    return new Intl.DateTimeFormat("en-CA", {
+    // Usamos formatToParts (y no el string formateado) para no depender del formato del locale/ICU del runtime.
+    const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).format(now);
+    }).formatToParts(now);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const iso = `${get("year").padStart(4, "0")}-${get("month").padStart(2, "0")}-${get("day").padStart(2, "0")}`;
+    return isISODate(iso) ? iso : now.toISOString().slice(0, 10);
   } catch {
     return now.toISOString().slice(0, 10);
   }
 }
 
+/** Fecha local del dispositivo (para usar en el cliente), como "YYYY-MM-DD". */
+export function localTodayISO(now: Date = new Date()): ISODate {
+  return makeISO(now.getFullYear(), now.getMonth() + 1, now.getDate());
+}
+
+/** Hora local del dispositivo "HH:mm" (para usar en el cliente). */
+export function localTimeHHmm(now: Date = new Date()): string {
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
+
 /** Hora actual "HH:mm" en la zona horaria dada. */
 export function nowTimeInTimezone(timeZone: string = DEFAULT_TIMEZONE, now: Date = new Date()): string {
   try {
-    const parts = new Intl.DateTimeFormat("en-GB", {
+    const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
       hour: "2-digit",
       minute: "2-digit",
       hourCycle: "h23",
     }).formatToParts(now);
-    const h = parts.find((p) => p.type === "hour")?.value ?? "00";
-    const m = parts.find((p) => p.type === "minute")?.value ?? "00";
-    return `${h}:${m}`;
+    const h = (parts.find((p) => p.type === "hour")?.value ?? "00").padStart(2, "0");
+    const m = (parts.find((p) => p.type === "minute")?.value ?? "00").padStart(2, "0");
+    const t = `${h === "24" ? "00" : h}:${m}`;
+    return isValidTime(t) ? t : now.toISOString().slice(11, 16);
   } catch {
     return now.toISOString().slice(11, 16);
   }
