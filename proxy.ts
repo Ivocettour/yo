@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isRegistrationFlagEnabled } from "@/lib/auth/registration-flag";
 
 const SESSION_COOKIE = "gastos_session";
 const PUBLIC_PATHS = ["/login", "/register", "/offline"];
@@ -18,7 +19,10 @@ export function proxy(request: NextRequest) {
     url.search = pathname !== "/" ? `?next=${encodeURIComponent(pathname + request.nextUrl.search)}` : "";
     return NextResponse.redirect(url);
   }
-  if (hasSession && (pathname === "/login" || pathname === "/register")) {
+  // Con sesion abierta no tiene sentido /login. /register solo se bloquea si el
+  // registro esta deshabilitado: con ALLOW_REGISTRATION=true se puede crear otra cuenta.
+  const blockRegister = pathname === "/register" && !isRegistrationFlagEnabled();
+  if (hasSession && (pathname === "/login" || blockRegister)) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

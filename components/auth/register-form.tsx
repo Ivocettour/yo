@@ -8,7 +8,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Field, FormError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
-export function RegisterForm({ firstUser }: { firstUser: boolean }) {
+export function RegisterForm({ firstUser, currentUserEmail }: { firstUser: boolean; currentUserEmail?: string | null }) {
   const [state, action, pending] = useActionState(register, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
 
@@ -23,6 +23,12 @@ export function RegisterForm({ firstUser }: { firstUser: boolean }) {
               : "Completá tus datos para empezar."}
           </p>
         </div>
+        {currentUserEmail ? (
+          <p className="rounded-2xl bg-warning-soft px-4 py-3 text-sm text-warning">
+            Tenés la sesión abierta como <strong>{currentUserEmail}</strong>. Si creás otra cuenta, vas a quedar conectado con la
+            nueva.
+          </p>
+        ) : null}
         <form action={action} className="flex flex-col gap-4" noValidate>
           <FormError message={state && !state.ok ? state.error : null} />
           <Field label="Nombre" htmlFor="name" error={errors.name}>
